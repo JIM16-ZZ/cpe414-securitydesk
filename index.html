@@ -1,0 +1,607 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>CampusConnect Security Desk</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;500;600&family=Newsreader:opsz,wght@6..72,500;6..72,700&display=swap">
+<style>
+/* Layout: sticky case header with score, a station stepper, one working card per station, results page at the end. */
+:root {
+  --bg: #eef2f6; --surface: #ffffff; --surface2: #e6ecf3; --ink: #0e1a2b; --muted: #52647a; --line: #cfd8e3;
+  --teal: #0d7a8c; --teal-fill: #139ab0; --on-teal: #ffffff;
+  --amber: #8a5a00; --amber-fill: #f2a900; --on-amber: #0e1a2b;
+  --red: #b3372f; --red-bg: #fbe9e7; --green: #1d7a50; --green-bg: #e3f4ec;
+  --code-bg: #0e1a2b; --code-ink: #e8eef5; --code-dim: #8fa3ba; --mark: #f2a900; --mark-ink: #0e1a2b;
+  --font-display: "Newsreader", Georgia, "Times New Roman", serif;
+  --font-body: "IBM Plex Sans", "Segoe UI", Calibri, Arial, sans-serif;
+  --font-mono: "IBM Plex Mono", Consolas, "Courier New", monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0a1422; --surface: #12233a; --surface2: #1a2f4a; --ink: #e8eef5; --muted: #9aabbf; --line: #27405e;
+    --teal: #4cc6db; --teal-fill: #139ab0; --on-teal: #ffffff;
+    --amber: #f2b632; --amber-fill: #f2a900; --on-amber: #0e1a2b;
+    --red: #f2837a; --red-bg: #3a1f26; --green: #55c995; --green-bg: #13362b;
+    --code-bg: #060d18; --code-ink: #e8eef5; --code-dim: #8fa3ba; --mark: #f2a900; --mark-ink: #0e1a2b;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0a1422; --surface: #12233a; --surface2: #1a2f4a; --ink: #e8eef5; --muted: #9aabbf; --line: #27405e;
+  --teal: #4cc6db; --teal-fill: #139ab0; --on-teal: #ffffff;
+  --amber: #f2b632; --amber-fill: #f2a900; --on-amber: #0e1a2b;
+  --red: #f2837a; --red-bg: #3a1f26; --green: #55c995; --green-bg: #13362b;
+  --code-bg: #060d18; --code-ink: #e8eef5; --code-dim: #8fa3ba; --mark: #f2a900; --mark-ink: #0e1a2b;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font: 400 16px/1.55 var(--font-body); padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 0 48px; }
+.wrap { max-width: 940px; margin: 0 auto; }
+code, .mono { font-family: var(--font-mono); font-size: 0.92em; }
+code { background: var(--surface2); padding: 1px 6px; border-radius: 4px; }
+button { font: inherit; cursor: pointer; }
+:focus-visible { outline: 3px solid var(--amber-fill); outline-offset: 2px; }
+
+/* header */
+.top { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--bg); border-bottom: 1px solid var(--line); padding-block: 12px; }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--bg); }
+.top .wrap { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.brand { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.mark { width: 36px; height: 36px; color: var(--teal-fill); flex: none; }
+.bt { font: 700 20px/1.1 var(--font-display); letter-spacing: 0.1px; }
+.bs { font-size: 12px; color: var(--muted); letter-spacing: 0.06em; text-transform: uppercase; }
+.score { display: flex; align-items: baseline; gap: 6px; font-variant-numeric: tabular-nums; }
+.score .lbl { font-size: 12px; color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; }
+.score b { font: 700 28px/1 var(--font-display); }
+.score .of { color: var(--muted); font-size: 14px; }
+
+/* stepper */
+.steps { overflow-x: auto; padding-block: 12px 4px; }
+.steps ol { list-style: none; display: flex; gap: 8px; margin: 0; padding: 0; min-width: max-content; }
+.steps button { display: flex; align-items: center; gap: 8px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); padding: 6px 12px 6px 8px; border-radius: 999px; font-size: 13px; }
+.steps .n { width: 22px; height: 22px; border-radius: 50%; background: var(--surface2); display: grid; place-items: center; font: 600 12px var(--font-mono); }
+.steps .cur { border-color: var(--teal-fill); box-shadow: 0 0 0 2px var(--teal-fill) inset; }
+.steps .ok .n { background: var(--green); color: var(--bg); }
+
+/* stage */
+.stage { padding-block: 28px 8px; }
+.kick { font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--teal); font-weight: 600; }
+h1 { font: 700 clamp(30px, 5vw, 44px)/1.08 var(--font-display); margin: 6px 0 10px; text-wrap: balance; }
+h2 { font: 700 22px/1.2 var(--font-display); margin: 0 0 8px; }
+.lead { font-size: 18px; max-width: 68ch; margin: 0 0 20px; color: var(--ink); }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 20px; margin-block: 16px; }
+.card.tint { background: var(--surface2); border-color: transparent; }
+.muted { color: var(--muted); }
+.small { font-size: 14px; }
+.row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+.sp { flex: 1; }
+
+.btn { border: 1px solid var(--line); background: var(--surface); color: var(--ink); padding: 9px 16px; border-radius: 8px; font-weight: 500; }
+.btn:hover:not(:disabled) { border-color: var(--teal-fill); }
+.btn.primary { background: var(--teal-fill); border-color: var(--teal-fill); color: var(--on-teal); }
+.btn.warn { background: var(--amber-fill); border-color: var(--amber-fill); color: var(--on-amber); }
+.btn.good { background: var(--green-bg); border-color: var(--green); color: var(--green); }
+.btn.bad { background: var(--red-bg); border-color: var(--red); color: var(--red); }
+.btn:disabled { cursor: default; opacity: 0.55; }
+.btn.good:disabled, .btn.bad:disabled { opacity: 1; }
+.nav { display: flex; gap: 12px; align-items: center; margin-top: 28px; flex-wrap: wrap; }
+.sscore { font-size: 14px; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+.fb { margin-top: 12px; padding: 10px 14px; border-radius: 8px; font-size: 15px; }
+.fb.ok { background: var(--green-bg); color: var(--ink); border-left: 4px solid var(--green); }
+.fb.no { background: var(--red-bg); color: var(--ink); border-left: 4px solid var(--red); }
+.fb.info { background: var(--surface2); border-left: 4px solid var(--amber-fill); }
+.pts { font-family: var(--font-mono); font-weight: 600; }
+
+/* tables */
+.scroll { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 15px; }
+th, td { border: 1px solid var(--line); padding: 8px 12px; text-align: left; }
+th { background: var(--surface2); font-weight: 600; }
+td.c, th.c { text-align: center; }
+.cell-own { background: var(--green-bg); font-weight: 600; }
+.cell-r { background: var(--surface2); }
+.cell-rw { background: var(--green-bg); }
+.cell-none { color: var(--muted); }
+
+/* judge list */
+.judge { list-style: none; padding: 0; margin: 0; display: grid; gap: 12px; }
+.jitem { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; }
+.jq { display: flex; gap: 12px; align-items: flex-start; }
+.jn { flex: none; width: 26px; height: 26px; border-radius: 50%; background: var(--surface2); display: grid; place-items: center; font: 600 13px var(--font-mono); }
+.jt { min-width: 0; }
+.jb { display: flex; gap: 10px; margin-top: 12px; padding-left: 38px; flex-wrap: wrap; }
+.chips { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
+.chip { font: 500 12px var(--font-mono); background: var(--surface2); border: 1px solid var(--line); padding: 2px 8px; border-radius: 999px; }
+
+/* ladder */
+.ladder { display: grid; gap: 6px; max-width: 520px; }
+.rung { padding: 10px 14px; border-radius: 8px; font-weight: 600; display: flex; justify-content: space-between; align-items: center; color: #fff; }
+.rung.l4 { background: #0e1a2b; } .rung.l3 { background: #f2a900; color: #0e1a2b; } .rung.l2 { background: #27476e; } .rung.l1 { background: #1f7f5c; }
+.you { background: #0e1a2b; color: #fff; font-size: 12px; padding: 2px 10px; border-radius: 999px; letter-spacing: 0.06em; }
+.rung.l3 .you { background: #0e1a2b; }
+
+/* permission grid */
+.perm { display: grid; grid-template-columns: auto repeat(3, 72px); gap: 8px 6px; align-items: center; max-width: 420px; }
+.perm .h { font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); text-align: center; }
+.perm label.tg { display: grid; place-items: center; height: 44px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); cursor: pointer; font: 600 16px var(--font-mono); gap: 0; }
+.perm label.tg:has(input:checked) { background: var(--teal-fill); border-color: var(--teal-fill); color: #fff; }
+.perm label.tg:has(input:focus-visible) { outline: 3px solid var(--amber-fill); outline-offset: 2px; }
+.perm input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.perm label.tg.locked { cursor: default; opacity: 0.8; }
+.readout { font: 600 28px/1.2 var(--font-mono); letter-spacing: 0.06em; }
+.readout small { font-size: 14px; color: var(--muted); letter-spacing: 0; margin-left: 10px; }
+
+/* code and SQL */
+.code { background: var(--code-bg); color: var(--code-ink); border-radius: 8px; padding: 14px 16px; font: 400 14px/1.6 var(--font-mono); overflow-x: auto; white-space: pre-wrap; word-break: break-word; margin: 0; }
+.code mark { background: var(--mark); color: var(--mark-ink); padding: 0 2px; border-radius: 2px; }
+.code .dim { color: var(--code-dim); }
+.code .err { color: #ff9b92; }
+.code .okc { color: #7ee0b0; }
+.field { display: grid; gap: 4px; flex: 1; min-width: 180px; }
+.field label { font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+input[type=text], input[type=password], select { font: 400 16px var(--font-mono); padding: 9px 12px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); width: 100%; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.seg button { border: 0; background: var(--surface); color: var(--ink); padding: 8px 14px; }
+.seg button[aria-pressed="true"] { background: var(--teal-fill); color: #fff; }
+.tasks { list-style: none; padding: 0; margin: 0; display: grid; gap: 6px; }
+.tasks li { display: flex; gap: 10px; align-items: baseline; font-size: 15px; }
+.tick { font-family: var(--font-mono); width: 18px; color: var(--muted); flex: none; }
+.tasks li.done .tick { color: var(--green); }
+.tasks li.locked { color: var(--muted); }
+
+/* mcq */
+.opts { display: grid; gap: 8px; margin-top: 10px; }
+.opt { text-align: left; border: 1px solid var(--line); background: var(--surface); color: var(--ink); padding: 10px 14px; border-radius: 8px; }
+.opt:hover:not(:disabled) { border-color: var(--teal-fill); }
+.opt.wrong { background: var(--red-bg); border-color: var(--red); text-decoration: line-through; opacity: 0.8; }
+.opt.right { background: var(--green-bg); border-color: var(--green); }
+
+/* priv grid */
+.privrow { display: grid; grid-template-columns: minmax(160px, 1.3fr) repeat(5, 74px); gap: 6px; align-items: center; padding: 10px 0; border-top: 1px solid var(--line); }
+.privrow.head { border-top: 0; font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+.privrow .pc { text-align: center; }
+.privrow .acct b { font-family: var(--font-mono); }
+.privrow .need { grid-column: 1 / -1; font-size: 14px; color: var(--muted); }
+.privrow .fbx { grid-column: 1 / -1; }
+.privrow input[type=checkbox] { width: 22px; height: 22px; accent-color: var(--teal-fill); }
+.privwrap { overflow-x: auto; }
+.privrow label.pc { display: grid; justify-items: center; gap: 2px; cursor: pointer; }
+.privrow .pl { display: none; font: 500 10px var(--font-mono); color: var(--muted); }
+.privrow .acct { grid-column: auto; }
+
+/* results */
+.bars { display: grid; gap: 10px; }
+.bar { display: grid; grid-template-columns: 150px 1fr 70px; gap: 10px; align-items: center; font-size: 14px; }
+.bar .track { height: 12px; background: var(--surface2); border-radius: 6px; overflow: hidden; }
+.bar .fill { height: 100%; background: var(--teal-fill); }
+.bar .v { text-align: right; font-family: var(--font-mono); }
+.rank { font: 700 clamp(28px, 6vw, 44px)/1.1 var(--font-display); }
+.big { font: 700 64px/1 var(--font-display); font-variant-numeric: tabular-nums; }
+@media (max-width: 560px) {
+  .bs { display: none; } .top { position: static; }
+  .privrow { grid-template-columns: repeat(5, 1fr); } .privrow.head { display: none; } .privrow .acct { grid-column: 1 / -1; } .privrow .pl { display: block; } .bar { grid-template-columns: 1fr 70px; } .bar .track { grid-column: 1 / -1; order: 3; } .perm { grid-template-columns: auto repeat(3, 1fr); } .jb { padding-left: 0; } }
+@media (prefers-reduced-motion: no-preference) { .fb { animation: pop 0.2s ease-out; } @keyframes pop { from { transform: translateY(-3px); opacity: 0; } } }
+html { color-scheme: light; } body { margin: 0; } [hidden] { display: none !important; } img { max-width: 100%; }
+</style>
+
+</head>
+<body>
+<div id="app"></div>
+
+<script>
+(function () {
+  'use strict';
+  var $ = function (s) { return document.querySelector(s); };
+  var esc = function (s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
+  var KEY = 'csd-v1';
+  var S = null;
+  try { S = JSON.parse(localStorage.getItem(KEY) || 'null'); } catch (e) { S = null; }
+  if (!S || typeof S !== 'object') S = { name: '', step: 0, t: {}, ui: {} };
+  S.t = S.t || {}; S.ui = S.ui || {};
+  function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} }
+
+  /* ---------- data ---------- */
+  var STATIONS = [
+    { name: 'Permission Desk', short: 'Permissions', review: 'UNIX permissions, slides 19 to 21' },
+    { name: 'Access Matrix Court', short: 'Matrix', review: 'DAC and the access matrix, slides 14 to 17' },
+    { name: 'Clearance Checkpoint', short: 'Clearance', review: 'MAC and Bell–LaPadula, slides 24 and 25' },
+    { name: 'Policy Gate', short: 'Policy', review: 'ABAC, slides 31 to 33' },
+    { name: 'Break the Login', short: 'Login', review: 'SQL injection, slides 48 to 53' },
+    { name: 'Privilege Designer', short: 'Privileges', review: 'GRANT and least privilege, slides 54 to 57' },
+    { name: 'The Tracker', short: 'Tracker', review: 'Inference, slides 58 to 60' }
+  ];
+  var KEYS = {
+    1: ['s1_a', 's1_b', 's1_c'],
+    2: ['s2_1', 's2_2', 's2_3', 's2_4', 's2_5', 's2_6'],
+    3: ['s3_1', 's3_2', 's3_3', 's3_4', 's3_5', 's3_6'],
+    4: ['s4_1', 's4_2', 's4_3', 's4_4', 's4_5', 's4_6'],
+    5: ['s5_a', 's5_b', 's5_c', 's5_d'],
+    6: ['s6_1', 's6_2', 's6_3', 's6_4'],
+    7: ['s7_a', 's7_b']
+  };
+  var V6 = [17, 17, 17, 17, 16, 16];
+
+  function T(k) { if (!S.t[k]) S.t[k] = { att: 0, hint: false, done: false, pts: 0, wrong: [] }; if (!S.t[k].wrong) S.t[k].wrong = []; return S.t[k]; }
+  function pointsFor(value, att, hint) { var m = [1, 0.6, 0.3][Math.min(att, 2)]; return Math.round(value * m * (hint ? 0.7 : 1)); }
+  function stationScore(n) { return KEYS[n].reduce(function (a, k) { return a + (S.t[k] ? S.t[k].pts : 0); }, 0); }
+  function stationDone(n) { return KEYS[n].every(function (k) { return S.t[k] && S.t[k].done; }); }
+  function total() { var s = 0; for (var n = 1; n <= 7; n++) s += stationScore(n); return s; }
+
+  /* ---------- shared pieces ---------- */
+  function header() {
+    return '<header class="top"><div class="wrap"><div class="brand"><svg class="mark" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2l8 3v6c0 5-3.4 9.4-8 11-4.6-1.6-8-6-8-11V5z"/><path fill="var(--bg)" d="M10.6 14.6l-2.4-2.4 1.1-1.1 1.3 1.3 3.6-3.6 1.1 1.1z"/></svg><div><div class="bt">CampusConnect Security Desk</div><div class="bs">CPE 414 · Access Control and Database Security</div></div></div>' +
+      '<div class="score" aria-live="polite"><span class="lbl">Score</span><b>' + total() + '</b><span class="of">/ 700</span></div></div></header>';
+  }
+  function stepper() {
+    var h = '<nav class="steps wrap" aria-label="Stations"><ol>';
+    STATIONS.forEach(function (st, i) {
+      var n = i + 1, cls = (S.step === n ? 'cur ' : '') + (stationDone(n) ? 'ok' : '');
+      h += '<li><button class="' + cls + '" data-act="go" data-n="' + n + '" ' + (S.step === n ? 'aria-current="step"' : '') + '><span class="n">' + (stationDone(n) ? '✓' : n) + '</span>' + esc(st.short) + '</button></li>';
+    });
+    h += '<li><button class="' + (S.step === 8 ? 'cur' : '') + '" data-act="go" data-n="8"><span class="n">★</span>Results</button></li></ol></nav>';
+    return h;
+  }
+  function shell(n, intro, body) {
+    var st = STATIONS[n - 1], done = stationDone(n);
+    var label = n < 7 ? (done ? 'Next station' : 'Skip to next station') : (done ? 'See results' : 'Finish and see results');
+    return '<main class="stage wrap"><div class="kick">Station ' + n + ' of 7 · Review: ' + esc(st.review) + '</div><h1>' + esc(st.name) + '</h1><p class="lead">' + intro + '</p>' + body +
+      '<div class="nav">' + (n > 1 ? '<button class="btn" data-act="go" data-n="' + (n - 1) + '">Back</button>' : '') + '<span class="sp"></span><span class="sscore">This station: <b>' + stationScore(n) + '</b> / 100</span>' +
+      '<button class="btn ' + (done ? 'primary' : '') + '" data-act="go" data-n="' + (n + 1) + '">' + label + '</button></div></main>';
+  }
+  function judgeList(items, labels) {
+    var h = '<ol class="judge">';
+    items.forEach(function (it, i) {
+      var t = T(it.k), ok = t.done && t.choice === it.ans;
+      var res = '';
+      if (t.done) res = '<div class="fb ' + (ok ? 'ok' : 'no') + '" role="status"><b>' + (ok ? 'Correct' : 'Not quite') + '.</b> ' + it.why + ' <span class="pts">' + (ok ? '+' + t.pts : '+0') + '</span></div>';
+      function btn(c, label) {
+        var cls = 'btn';
+        if (t.done && t.choice === c) cls += ok ? ' good' : ' bad';
+        return '<button class="' + cls + '" data-act="judge" data-k="' + it.k + '" data-c="' + c + '" data-fid="j_' + it.k + c + '"' + (t.done ? ' disabled' : '') + '>' + label + '</button>';
+      }
+      h += '<li class="jitem"><div class="jq"><span class="jn">' + (i + 1) + '</span><div class="jt">' + it.html + '</div></div><div class="jb">' + btn('a', labels[0]) + btn('b', labels[1]) + '</div>' + res + '</li>';
+    });
+    return h + '</ol>';
+  }
+  function mcq(k, q, opts, correct, why, value) {
+    var t = T(k), h = '<div class="card"><h2>' + q + '</h2><div class="opts" role="group">';
+    opts.forEach(function (o, i) {
+      var cls = 'opt' + (t.wrong.indexOf(i) >= 0 ? ' wrong' : '') + (t.done && i === correct ? ' right' : '');
+      h += '<button class="' + cls + '" data-act="mcq" data-k="' + k + '" data-i="' + i + '" data-fid="m_' + k + i + '"' + (t.done || t.wrong.indexOf(i) >= 0 ? ' disabled' : '') + '>' + o + '</button>';
+    });
+    h += '</div>';
+    if (t.wrong.length && !t.done) h += '<div class="fb no" role="status">Not that one. Each wrong try lowers the points. Read the options again.</div>';
+    if (t.done) h += '<div class="fb ok" role="status"><b>Correct.</b> ' + why + ' <span class="pts">+' + t.pts + '</span></div>';
+    return h + '</div>';
+  }
+
+  /* ---------- intro ---------- */
+  function introView() {
+    var has = S.name && S.step > 0;
+    return '<main class="stage wrap"><div class="kick">Enrollment week opens Monday</div><h1>You are the on-call security analyst</h1>' +
+      '<p class="lead">CampusConnect, the campus enrollment system, goes live in a few days. Seven stations stand between it and a safe launch. Each one is a short puzzle from Access Control or Database Security.</p>' +
+      '<div class="card"><div class="row"><div class="field"><label for="name">Your name</label><input type="text" id="name" data-bind="name" maxlength="24" autocomplete="off" value="' + esc(S.name || '') + '" placeholder="e.g. Ana Reyes"></div></div>' +
+      '<div class="row" style="margin-top:14px"><button class="btn primary" data-act="start" data-fid="start">' + (has ? 'Continue my shift' : 'Start my shift') + '</button>' +
+      (has ? (S.ui.confirmReset ? '<button class="btn bad" data-act="reset">Yes, erase my progress</button><button class="btn" data-act="cancelreset">Keep it</button>' : '<button class="btn" data-act="askreset">Start over</button>') : '') + '</div>' +
+      (S.ui.nameErr ? '<div class="fb no" role="alert">Type your name first so your results carry it.</div>' : '') + '</div>' +
+      '<div class="card tint"><h2>How it works</h2><ul class="small" style="margin:0;padding-left:20px;display:grid;gap:6px">' +
+      '<li>About 50 minutes. Work alone, or in pairs with one person driving and one checking.</li>' +
+      '<li>Each station is worth 100 points, 700 in total. A correct first try earns full points. Later tries and hints earn less.</li>' +
+      '<li>You may skip a station and come back. Your progress is saved in this browser.</li>' +
+      '<li>At the end you get a results card with a completion code to show your instructor.</li>' +
+      '<li>Everything here runs in your browser against a made-up database. Never try these techniques on a real system.</li></ul></div></main>';
+  }
+
+  /* ---------- station 1: permissions ---------- */
+  var P1 = [
+    { k: 's1_a', v: 34, file: 'grade_script.sh', text: 'Ana owns <b>grade_script.sh</b>. Ana may read, write and run it. Her TAs (the group) may read and run it. Everyone else gets nothing.', oct: '750', hint: 'Add r = 4, w = 2, x = 1 inside each class: owner, group, world.', why: 'Owner rwx = 4+2+1 = 7. Group r-x = 4+1 = 5. World --- = 0. That is 750.' },
+    { k: 's1_b', v: 33, file: 'syllabus.pdf', text: 'Everyone may read <b>syllabus.pdf</b>. Only the owner may change it. Nobody needs to run it.', oct: '644', hint: 'Reading is 4, writing is 2. Who gets the 2?', why: 'Owner rw- = 4+2 = 6. Group r-- = 4. World r-- = 4. That is 644.' },
+    { k: 's1_c', v: 33, file: 'quizbank.docx', text: 'Owner and group may read and edit <b>quizbank.docx</b>. Others get nothing. Nobody runs it.', oct: '660', hint: 'Owner and group get the same digit. World gets zero.', why: 'Owner rw- = 6. Group rw- = 6. World --- = 0. That is 660.' }
+  ];
+  function digit(a, i) { return (a[i] ? 4 : 0) + (a[i + 1] ? 2 : 0) + (a[i + 2] ? 1 : 0); }
+  function gridOct(a) { return '' + digit(a, 0) + digit(a, 3) + digit(a, 6); }
+  function gridStr(a) { var l = ['r', 'w', 'x'], s = '-'; for (var i = 0; i < 9; i++) s += a[i] ? l[i % 3] : '-'; return s; }
+  function arrFromOct(o) { var a = []; for (var c = 0; c < 3; c++) { var d = +o[c]; a.push(!!(d & 4), !!(d & 2), !!(d & 1)); } return a; }
+  function view1() {
+    var i = S.ui.i1 || 0, p = P1[i], t = T(p.k);
+    S.ui.grid = S.ui.grid || [[], [], []];
+    var g = S.ui.grid[i]; if (!g || g.length !== 9) { g = S.ui.grid[i] = [false, false, false, false, false, false, false, false, false]; }
+    if (t.done) g = S.ui.grid[i] = arrFromOct(p.oct);
+    var tabs = '<div class="row" style="margin-bottom:12px">';
+    P1.forEach(function (q, j) { var d = T(q.k).done; tabs += '<button class="btn ' + (j === i ? 'primary' : '') + '" data-act="s1tab" data-i="' + j + '">' + (d ? '✓ ' : '') + 'Scenario ' + (j + 1) + '</button>'; });
+    tabs += '</div>';
+    var cls = ['Owner', 'Group', 'World'], h = '<div class="card">' + tabs + '<p style="margin-top:0">' + p.text + '</p><div class="perm" role="group" aria-label="Permission boxes"><span></span><span class="h">read</span><span class="h">write</span><span class="h">execute</span>';
+    for (var c = 0; c < 3; c++) {
+      h += '<b>' + cls[c] + '</b>';
+      for (var b = 0; b < 3; b++) { var idx = c * 3 + b; h += '<label class="tg' + (t.done ? ' locked' : '') + '">' + 'rwx'[b] + '<input type="checkbox" data-act="s1box" data-idx="' + idx + '" data-fid="b' + idx + '"' + (g[idx] ? ' checked' : '') + (t.done ? ' disabled' : '') + ' aria-label="' + cls[c] + ' ' + ['read', 'write', 'execute'][b] + '"></label>'; }
+    }
+    h += '</div><p class="readout" style="margin:16px 0 4px">' + gridStr(g) + '<small>octal ' + gridOct(g) + '</small></p><div class="muted small">First character <code>-</code> means a regular file.</div>';
+    if (!t.done) {
+      h += '<div class="row" style="margin-top:14px"><button class="btn primary" data-act="s1check">Check</button><button class="btn" data-act="s1hint"' + (t.hint ? ' disabled' : '') + '>' + (t.hint ? 'Hint used' : 'Hint (−30%)') + '</button></div>';
+      if (t.hint) h += '<div class="fb info">' + p.hint + '</div>';
+      if (S.ui.fb1 && S.ui.fb1.k === p.k) h += '<div class="fb no" role="status">' + S.ui.fb1.msg + '</div>';
+    } else {
+      h += '<div class="fb ok" role="status"><b>Correct.</b> ' + p.why + ' <span class="pts">+' + t.pts + '</span></div>';
+      if (i < 2) h += '<div class="row" style="margin-top:12px"><button class="btn primary" data-act="s1tab" data-i="' + (i + 1) + '">Next scenario</button></div>';
+    }
+    return shell(1, 'Monday’s scripts and files need the right UNIX permissions. Tick the read, write and execute boxes until the permission matches the scenario.', h + '</div>');
+  }
+
+  /* ---------- station 2: access matrix ---------- */
+  function view2() {
+    var m = '<div class="card"><div class="scroll"><table><thead><tr><th></th><th>Grades.xlsx</th><th>Syllabus.pdf</th><th>QuizBank.docx</th></tr></thead><tbody>' +
+      '<tr><th>Ana (instructor)</th><td class="cell-own">own, R, W</td><td class="cell-own">own, R, W</td><td class="cell-own">own, R, W</td></tr>' +
+      '<tr><th>Ben (TA)</th><td class="cell-r">R</td><td class="cell-r">R</td><td class="cell-rw">R, W</td></tr>' +
+      '<tr><th>Carl (student)</th><td class="cell-none">none</td><td class="cell-r">R</td><td class="cell-none">none</td></tr></tbody></table></div>' +
+      '<p class="small muted" style="margin:10px 0 0">R = read, W = write, own = owner (may change the rules for that file).</p></div>';
+    var items = [
+      { k: 's2_1', value: V6[0], ans: 'a', html: 'Ben (TA) tries to <b>write</b> to <code>QuizBank.docx</code>.', why: 'Ben’s cell for QuizBank is R, W, so writing is allowed.' },
+      { k: 's2_2', value: V6[1], ans: 'b', html: 'Carl (student) tries to <b>read</b> <code>Grades.xlsx</code>.', why: 'Carl’s cell for Grades is empty. No access.' },
+      { k: 's2_3', value: V6[2], ans: 'b', html: 'Ben (TA) tries to <b>write</b> to <code>Grades.xlsx</code>.', why: 'Ben only has R on Grades. Reading is not writing.' },
+      { k: 's2_4', value: V6[3], ans: 'a', html: 'Carl (student) tries to <b>read</b> <code>Syllabus.pdf</code>.', why: 'Carl has R on the syllabus.' },
+      { k: 's2_5', value: V6[4], ans: 'a', html: 'Ana tries to <b>give Ben write access</b> to <code>Grades.xlsx</code>.', why: 'Ana owns the file. In DAC the owner decides who else gets access.' },
+      { k: 's2_6', value: V6[5], ans: 'b', html: 'Ben tries to <b>give Carl read access</b> to <code>QuizBank.docx</code>.', why: 'Ben can read and write it, but he is not the owner. Only the owner (or someone the owner delegated to) may change the rules.' }
+    ];
+    return shell(2, 'Discretionary access control in action. Read the matrix, then rule on each request.', m + judgeList(items, ['Allow', 'Deny']));
+  }
+
+  /* ---------- station 3: Bell-LaPadula ---------- */
+  function view3() {
+    var l = '<div class="card"><div class="ladder"><div class="rung l4"><span>Top Secret</span><span class="small">fleet_plan.txt</span></div><div class="rung l3"><span>Secret</span><span class="you">YOU ARE HERE</span></div><div class="rung l2"><span>Confidential</span><span class="small">memo.txt</span></div><div class="rung l1"><span>Unclassified</span><span class="small">notice.txt</span></div></div>' +
+      '<p class="small muted" style="margin:12px 0 0">You hold <b>Secret</b> clearance. Rules: <b>no read up</b> and <b>no write down</b>. Reading or writing at your own level is fine.</p></div>';
+    var items = [
+      { k: 's3_1', value: V6[0], ans: 'b', html: 'Read the <b>Top Secret</b> file <code>fleet_plan.txt</code>.', why: 'That is reading up. Your clearance is below Top Secret.' },
+      { k: 's3_2', value: V6[1], ans: 'a', html: 'Read the <b>Confidential</b> file <code>memo.txt</code>.', why: 'Reading down is allowed.' },
+      { k: 's3_3', value: V6[2], ans: 'b', html: 'Save a Secret report into the <b>Unclassified</b> file <code>notice.txt</code>.', why: 'That is writing down. Secret data could leak to people without clearance.' },
+      { k: 's3_4', value: V6[3], ans: 'a', html: 'Read a <b>Secret</b> file at your own level.', why: 'Same level: reading is allowed.' },
+      { k: 's3_5', value: V6[4], ans: 'a', html: 'Write a note into the <b>Top Secret</b> file <code>fleet_plan.txt</code>.', why: 'Writing up leaks nothing, because only higher-cleared people can read it. Allowed.' },
+      { k: 's3_6', value: V6[5], ans: 'b', html: 'Write into the <b>Confidential</b> file <code>memo.txt</code>.', why: 'Writing down again. Information may flow up, never down.' }
+    ];
+    return shell(3, 'Mandatory access control. The system decides, and nobody can override it. Apply Bell–LaPadula.', l + judgeList(items, ['Allow', 'Deny']));
+  }
+
+  /* ---------- station 4: ABAC ---------- */
+  function chipRow(a) { return '<div class="chips">' + a.map(function (x) { return '<span class="chip">' + x + '</span>'; }).join('') + '</div>'; }
+  function view4() {
+    var p = '<div class="card tint"><div class="kick">The policy</div><p style="margin:6px 0 0;font-size:18px">PERMIT if the user is the <b>instructor of the course</b> AND the time is between <b>07:00 and 20:00</b> AND the device is <b>managed</b>. Otherwise DENY.</p></div>';
+    var items = [
+      { k: 's4_1', value: V6[0], ans: 'a', html: 'Ana opens the CPE414 grade sheet.' + chipRow(['role: instructor of CPE414', 'time: 10:00', 'device: managed laptop']), why: 'All three conditions are true.' },
+      { k: 's4_2', value: V6[1], ans: 'b', html: 'Ana opens the CPE414 grade sheet.' + chipRow(['role: instructor of CPE414', 'time: 23:00', 'device: managed laptop']), why: 'The time is outside 07:00 to 20:00. Same person, same file, different context.' },
+      { k: 's4_3', value: V6[2], ans: 'b', html: 'Ana opens the CPE414 grade sheet.' + chipRow(['role: instructor of CPE414', 'time: 10:00', 'device: personal phone']), why: 'The device is not managed.' },
+      { k: 's4_4', value: V6[3], ans: 'a', html: 'Ana opens the CPE414 grade sheet.' + chipRow(['role: instructor of CPE414', 'time: 07:30', 'device: managed laptop']), why: '07:30 is inside the window, so all three conditions are true.' },
+      { k: 's4_5', value: V6[4], ans: 'b', html: 'Carl opens the CPE414 grade sheet.' + chipRow(['role: student', 'time: 10:00', 'device: managed laptop']), why: 'Carl is not an instructor.' },
+      { k: 's4_6', value: V6[5], ans: 'b', html: 'Ana opens the <b>IT201</b> grade sheet.' + chipRow(['role: instructor of CPE414', 'object course: IT201', 'time: 10:00', 'device: managed laptop']), why: 'Ana is not the instructor of IT201. The object’s course attribute does not match.' }
+    ];
+    return shell(4, 'Attribute-based access control. The decision comes from attributes of the user, the file and the situation, not from a fixed list.', p + judgeList(items, ['Permit', 'Deny']));
+  }
+
+  /* ---------- station 5: SQL injection sandbox ---------- */
+  var USERS = [{ name: 'alice', pass: 'Pq7#vN2x' }, { name: 'bob', pass: 'wL9$kR4m' }, { name: 'carol', pass: 'zT5&hD8c' }];
+  function near(x) { return x ? 'near "' + (x.t === 'str' ? "'" + x.v + "'" : (x.v !== undefined ? x.v : x.t)) + '": syntax error' : 'incomplete input'; }
+  function tokenize(s) {
+    var t = [], i = 0;
+    while (i < s.length) {
+      var c = s[i];
+      if (/\s/.test(c)) { i++; continue; }
+      if (c === "'") { var j = i + 1, v = ''; for (;;) { if (j >= s.length) throw new Error('unrecognized token: "' + s.slice(i) + '"'); if (s[j] === "'") { if (s[j + 1] === "'") { v += "'"; j += 2; continue; } break; } v += s[j++]; } t.push({ t: 'str', v: v }); i = j + 1; continue; }
+      if (s.substr(i, 2) === '--') break;
+      if (s.substr(i, 2) === '/*') { var e = s.indexOf('*/', i + 2); if (e < 0) break; i = e + 2; continue; }
+      if (/[0-9]/.test(c)) { var k = i; while (/[0-9.]/.test(s[k] || '')) k++; t.push({ t: 'num', v: s.slice(i, k) }); i = k; continue; }
+      if (/[A-Za-z_]/.test(c)) { var m = i; while (/[A-Za-z0-9_]/.test(s[m] || '')) m++; var w = s.slice(i, m), u = w.toUpperCase(); t.push(u === 'AND' || u === 'OR' ? { t: u } : { t: 'id', v: w }); i = m; continue; }
+      if (c === '=' || c === '(' || c === ')' || c === ';') { t.push({ t: c }); i++; continue; }
+      throw new Error('unrecognized token: "' + c + '"');
+    }
+    return t;
+  }
+  function evalWhere(where) {
+    var tk = tokenize(where), p = 0;
+    function pk() { return tk[p]; }
+    function operand() { var x = tk[p]; if (!x || ['str', 'id', 'num'].indexOf(x.t) < 0) throw new Error(near(x)); p++; return x; }
+    function val(x, row) { if (x.t === 'str') return { k: 's', v: x.v }; if (x.t === 'num') return { k: 'n', v: parseFloat(x.v) }; if (x.v !== 'name' && x.v !== 'pass') throw new Error('no such column: ' + x.v); return { k: 's', v: row[x.v] }; }
+    function cmp() {
+      if (pk() && pk().t === '(') { p++; var e = orE(); if (!pk() || pk().t !== ')') throw new Error(near(pk())); p++; return e; }
+      var a = operand(); if (!pk() || pk().t !== '=') throw new Error(near(pk())); p++; var b = operand();
+      return function (row) { var x = val(a, row), y = val(b, row); return x.k === y.k && x.v === y.v; };
+    }
+    function andE() { var f = cmp(); while (pk() && pk().t === 'AND') { p++; var g = cmp(), h = f; f = (function (h, g) { return function (r) { return h(r) && g(r); }; })(h, g); } return f; }
+    function orE() { var f = andE(); while (pk() && pk().t === 'OR') { p++; var g = andE(), h = f; f = (function (h, g) { return function (r) { return h(r) || g(r); }; })(h, g); } return f; }
+    var f = orE();
+    if (pk() && pk().t === ';') { p++; if (p < tk.length) throw new Error('You can only execute one statement at a time.'); }
+    if (p < tk.length) throw new Error(near(pk()));
+    return USERS.filter(f);
+  }
+  function runLogin() {
+    var u = S.ui.u || '', pw = S.ui.p || '', mode = S.ui.mode || 'vuln', r = { mode: mode, u: u, p: pw, rows: [], err: '' };
+    if (mode === 'vuln') { try { r.rows = evalWhere("name='" + u + "' AND pass='" + pw + "'"); } catch (e) { r.err = e.message; } }
+    else { r.rows = USERS.filter(function (x) { return x.name === u && x.pass === pw; }); }
+    S.ui.last = { mode: r.mode, u: r.u, p: r.p, n: r.rows.length, first: r.rows[0] ? r.rows[0].name : '', err: r.err };
+    var legit = USERS.some(function (x) { return x.name === u && x.pass === pw; });
+    var attackLike = /'|--|\bor\b/i.test(u + ' ' + pw);
+    if (mode === 'vuln' && r.rows.length > 0 && !legit) { var a = T('s5_a'); if (!a.done) { a.done = true; a.pts = Math.round(30 * (a.hint ? 0.7 : 1)); S.ui.s5msg = 'Task A complete: you got in without the password.'; } }
+    if (mode === 'safe' && attackLike && r.rows.length === 0) { var c = T('s5_c'); if (!c.done) { c.done = true; c.pts = 25; S.ui.s5msg = 'Task C complete: the same kind of input fails against a parameterized query.'; } }
+  }
+  function view5() {
+    var mode = S.ui.mode || 'vuln', last = S.ui.last, a = T('s5_a'), b = T('s5_b'), c = T('s5_c'), d = T('s5_d');
+    var h = '<div class="card"><h2>Login console</h2><p class="small muted" style="margin-top:0">Users in the table: <code>alice</code>, <code>bob</code>, <code>carol</code>. You do not know their passwords.</p>' +
+      '<div class="row" style="margin-bottom:12px"><span class="small muted">Mode</span><div class="seg" role="group" aria-label="Mode"><button data-act="mode" data-m="vuln" aria-pressed="' + (mode === 'vuln') + '">Vulnerable (string joining)</button><button data-act="mode" data-m="safe" aria-pressed="' + (mode === 'safe') + '">Safe (parameterized)</button></div></div>' +
+      '<div class="row"><div class="field"><label for="u">User name</label><input type="text" id="u" data-bind="u" autocomplete="off" spellcheck="false" value="' + esc(S.ui.u || '') + '"></div><div class="field"><label for="p">Password</label><input type="text" id="p" data-bind="p" autocomplete="off" spellcheck="false" value="' + esc(S.ui.p || '') + '"></div></div>' +
+      '<div class="row" style="margin-top:12px"><button class="btn primary" data-act="s5run">Log in</button></div>';
+    var q = mode === 'vuln'
+      ? "SELECT name FROM users WHERE name='<mark>" + esc(S.ui.u || '') + "</mark>' AND pass='<mark>" + esc(S.ui.p || '') + "</mark>'"
+      : 'SELECT name FROM users WHERE name=? AND pass=?\n<span class="dim">params: (\'' + esc(S.ui.u || '') + "', '" + esc(S.ui.p || '') + "')</span>";
+    h += '<div style="margin-top:14px"><div class="small muted" style="margin-bottom:4px">What the database receives (your input is highlighted)</div><pre class="code" aria-live="polite">' + q + '</pre></div>';
+    if (last) {
+      var res = last.err ? '<span class="err">Error: ' + esc(last.err) + '</span>' : (last.n > 0 ? '<span class="okc">Logged in as ' + esc(last.first) + '</span> <span class="dim">(' + last.n + ' row' + (last.n > 1 ? 's' : '') + ' matched, mode: ' + (last.mode === 'vuln' ? 'vulnerable' : 'safe') + ')</span>' : '<span class="err">Login failed</span> <span class="dim">(0 rows matched, mode: ' + (last.mode === 'vuln' ? 'vulnerable' : 'safe') + ')</span>');
+      h += '<pre class="code" style="margin-top:8px" role="status">Result of your last try: ' + res + '</pre>';
+    }
+    if (S.ui.s5msg) h += '<div class="fb ok" role="status">' + esc(S.ui.s5msg) + '</div>';
+    h += '</div>';
+    h += '<div class="card"><h2>Your tasks</h2><ul class="tasks">' +
+      '<li class="' + (a.done ? 'done' : '') + '"><span class="tick">' + (a.done ? '✓' : '○') + '</span><span><b>A.</b> In Vulnerable mode, log in as a real user without knowing the password. (30)' + (a.done ? ' <span class="pts">+' + a.pts + '</span>' : '') + '</span></li>' +
+      '<li class="' + (b.done ? 'done' : (a.done ? '' : 'locked')) + '"><span class="tick">' + (b.done ? '✓' : '○') + '</span><span><b>B.</b> Explain why it worked. (20)' + (a.done ? '' : ' Unlocks after A.') + '</span></li>' +
+      '<li class="' + (c.done ? 'done' : '') + '"><span class="tick">' + (c.done ? '✓' : '○') + '</span><span><b>C.</b> Switch to Safe mode and try an attack input. It must fail. (25)' + (c.done ? ' <span class="pts">+' + c.pts + '</span>' : '') + '</span></li>' +
+      '<li class="' + (d.done ? 'done' : (c.done ? '' : 'locked')) + '"><span class="tick">' + (d.done ? '✓' : '○') + '</span><span><b>D.</b> Choose the best fix. (25)' + (c.done ? '' : ' Unlocks after C.') + '</span></li></ul>';
+    if (!a.done) { h += '<div class="row" style="margin-top:12px"><button class="btn" data-act="s5hint"' + (a.hint ? ' disabled' : '') + '>' + (a.hint ? 'Hint used' : 'Hint for A (−30%)') + '</button></div>'; if (a.hint) h += '<div class="fb info">The password box lets you type a quote. A quote ends the string early. What if you add a condition that is always true right after it? Read the query box to see what the database gets.</div>'; }
+    h += '</div>';
+    if (a.done) h += mcq('s5_b', 'B. The query returned a row without a valid password. Why?', ['The database guessed the password.', 'The quote you typed ended the string early, so the rest of your input was read as SQL.', 'Passwords are not checked when a user name is given.', 'The web server was out of date.'], 1, 'Your input stopped being data and became part of the command. Mixing code and data in one string is the root cause.', 20);
+    if (c.done) h += mcq('s5_d', 'D. Which fix stops this whole class of bug?', ['Block the word OR in passwords.', 'Use parameterized queries so input is always treated as data.', 'Hide the SQL error messages.', 'Make the password field longer.'], 1, 'Placeholders keep code and data apart. Blocking words fails because attackers have other forms such as comments. Hiding errors and longer fields do not remove the flaw.', 25);
+    return shell(5, 'The CampusConnect login page builds its SQL by joining strings. Break it, then prove the fix. This is a made-up database in your browser, so nothing real is touched.', h);
+  }
+
+  /* ---------- station 6: privileges ---------- */
+  var ACC = [
+    { k: 's6_1', acct: 'web_app', obj: 'Enrollment', need: 'The web app lists enrollments and adds new ones. It never edits or deletes them.', ok: ['SELECT', 'INSERT'] },
+    { k: 's6_2', acct: 'advisor', obj: 'CpEAdvisorView', need: 'Advisors only look at the advisor view. They never change anything.', ok: ['SELECT'] },
+    { k: 's6_3', acct: 'registrar', obj: 'Students', need: 'The registrar reads records, adds new students and corrects mistakes. Records are never deleted.', ok: ['SELECT', 'INSERT', 'UPDATE'] },
+    { k: 's6_4', acct: 'analyst', obj: 'Grades', need: 'The analyst runs statistics on grades. Read only.', ok: ['SELECT'] }
+  ];
+  var PRIV = ['SELECT', 'INSERT', 'UPDATE', 'DELETE', 'DROP'];
+  function view6() {
+    S.ui.priv = S.ui.priv || {}; S.ui.privFb = S.ui.privFb || {};
+    var hint = T('s6_h').hint;
+    var h = '<div class="card"><div class="privwrap"><div class="in"><div class="privrow head"><span>Account and table</span>' + PRIV.map(function (x) { return '<span class="pc">' + x + '</span>'; }).join('') + '</div>';
+    ACC.forEach(function (r) {
+      var t = T(r.k), sel = t.done ? r.ok : (S.ui.priv[r.k] || []);
+      h += '<div class="privrow"><span class="acct"><b>' + r.acct + '</b><br><span class="muted small">on ' + r.obj + '</span></span>';
+      PRIV.forEach(function (pv) { h += '<label class="pc"><input type="checkbox" data-act="priv" data-k="' + r.k + '" data-p="' + pv + '" data-fid="pr_' + r.k + pv + '" aria-label="' + r.acct + ' ' + pv + '"' + (sel.indexOf(pv) >= 0 ? ' checked' : '') + (t.done ? ' disabled' : '') + '><span class="pl">' + pv + '</span></label>'; });
+      h += '<span class="need">' + r.need + '</span>';
+      if (t.done) h += '<span class="fbx"><div class="fb ok" role="status"><b>Correct.</b> <span class="pts">+' + t.pts + '</span></div></span>';
+      else if (S.ui.privFb[r.k]) h += '<span class="fbx"><div class="fb no" role="status">' + S.ui.privFb[r.k] + '</div></span>';
+      h += '</div>';
+    });
+    h += '</div></div><div class="row" style="margin-top:14px"><button class="btn primary" data-act="s6check">Check privileges</button><button class="btn" data-act="s6hint"' + (hint ? ' disabled' : '') + '>' + (hint ? 'Hint used' : 'Hint (−30% on rows left)') + '</button></div>';
+    if (hint) h += '<div class="fb info">Ask what each account actually does. Remove everything it does not need. No account needs DROP.</div>';
+    h += '</div>';
+    var lines = [];
+    ACC.forEach(function (r) { var t = T(r.k), sel = t.done ? r.ok : (S.ui.priv[r.k] || []); var ord = PRIV.filter(function (x) { return sel.indexOf(x) >= 0; }); if (ord.length) lines.push('GRANT ' + ord.join(', ') + '\n  ON ' + r.obj + ' TO ' + r.acct + ';'); });
+    h += '<div class="card"><h2>The SQL you are writing</h2><pre class="code">' + (lines.length ? esc(lines.join('\n')) : '<span class="dim">-- tick privileges above and the GRANT statements appear here</span>') + '</pre></div>';
+    return shell(6, 'Least privilege, applied to the database. Give each account only what its job needs. Each correct row is worth 25.', h);
+  }
+
+  /* ---------- station 7: tracker ---------- */
+  var EMP = [{ n: 'Ana Reyes', d: 'IT', s: 42000 }, { n: 'Ben Cruz', d: 'IT', s: 48000 }, { n: 'Carla Diaz', d: 'IT', s: 51000 }, { n: 'Dan Lim', d: 'Finance', s: 60000 }, { n: 'Eve Tan', d: 'Finance', s: 64000 }, { n: 'Mia Santos', d: 'HR', s: 55000 }];
+  function fmt(n) { return String(Math.round(n * 100) / 100).replace(/\B(?=(\d{3})+(?!\d))/g, ','); }
+  function runQuery() {
+    var q = Object.assign({ agg: 'SUM', dept: 'All', ex: 'None' }, S.ui.q || {}), rows = EMP.filter(function (e) { return (q.dept === 'All' || e.d === q.dept) && e.n !== q.ex; });
+    var desc = 'SELECT ' + q.agg + '(salary) FROM employees' + (q.dept !== 'All' ? " WHERE dept = '" + q.dept + "'" : '') + (q.ex !== 'None' ? (q.dept !== 'All' ? ' AND' : ' WHERE') + " name <> '" + q.ex + "'" : '');
+    var out;
+    if (rows.length < 3) out = { blocked: true };
+    else { var sum = rows.reduce(function (a, e) { return a + e.s; }, 0); out = { v: q.agg === 'SUM' ? sum : q.agg === 'AVG' ? sum / rows.length : rows.length, n: rows.length }; }
+    S.ui.hist = (S.ui.hist || []); S.ui.hist.unshift({ sql: desc, blocked: !!out.blocked, v: out.v, n: out.n }); S.ui.hist = S.ui.hist.slice(0, 12);
+  }
+  function view7() {
+    var q = Object.assign({ agg: 'SUM', dept: 'All', ex: 'None' }, S.ui.q || {}), a = T('s7_a');
+    function opt(list, cur) { return list.map(function (x) { return '<option' + (x === cur ? ' selected' : '') + '>' + esc(x) + '</option>'; }).join(''); }
+    var h = '<div class="card"><h2>HR records (hidden from you)</h2><p class="small muted" style="margin-top:0">You may only run statistics. The tool refuses any answer that covers fewer than 3 people.</p><div class="scroll"><table><thead><tr><th>Name</th><th>Dept</th><th>Salary</th></tr></thead><tbody>' +
+      EMP.map(function (e) { var hid = e.n === 'Mia Santos'; return '<tr><td>' + e.n + '</td><td>' + e.d + '</td><td class="mono">' + (hid ? '<span class="muted">hidden</span>' : '<span class="muted">hidden</span>') + '</td></tr>'; }).join('') + '</tbody></table></div></div>';
+    h += '<div class="card"><h2>Statistics tool</h2><div class="row"><div class="field"><label for="qa">Function</label><select id="qa" data-bind="q.agg">' + opt(['SUM', 'AVG', 'COUNT'], q.agg) + '</select></div><div class="field"><label for="qd">Department</label><select id="qd" data-bind="q.dept">' + opt(['All', 'IT', 'Finance', 'HR'], q.dept) + '</select></div><div class="field"><label for="qe">Leave out</label><select id="qe" data-bind="q.ex">' + opt(['None'].concat(EMP.map(function (e) { return e.n; })), q.ex) + '</select></div></div>' +
+      '<div class="row" style="margin-top:12px"><button class="btn primary" data-act="s7run">Run query</button></div>';
+    var hist = S.ui.hist || [];
+    h += '<pre class="code" style="margin-top:12px">' + (hist.length ? hist.map(function (x) { return esc(x.sql) + '\n  → ' + (x.blocked ? '<span class="err">BLOCKED: fewer than 3 people</span>' : '<span class="okc">' + fmt(x.v) + '</span> <span class="dim">(' + x.n + ' people)</span>'); }).join('\n\n') : '<span class="dim">-- query results appear here, newest first</span>') + '</pre></div>';
+    h += '<div class="card"><h2>Your audit finding</h2><p style="margin-top:0">Using only allowed queries, work out the salary of <b>Mia Santos</b> (HR).</p><div class="row"><div class="field"><label for="ans">Mia’s salary</label><input type="text" id="ans" data-bind="ans" inputmode="numeric" autocomplete="off" value="' + esc(S.ui.ans || '') + '"' + (a.done ? ' disabled' : '') + '></div>';
+    if (!a.done) h += '<button class="btn primary" data-act="s7check" style="align-self:end">Submit</button><button class="btn" data-act="s7hint" style="align-self:end"' + (a.hint ? ' disabled' : '') + '>' + (a.hint ? 'Hint used' : 'Hint (−30%)') + '</button>';
+    h += '</div>';
+    if (a.hint && !a.done) h += '<div class="fb info">HR alone is blocked. Ask for a total that includes everyone, then ask again with one person left out. Compare the answers.</div>';
+    if (S.ui.fb7 && !a.done) h += '<div class="fb no" role="status">' + S.ui.fb7 + '</div>';
+    if (a.done) h += '<div class="fb ok" role="status"><b>Found it.</b> The total for all 6 people is 320,000. Leaving Mia out gives 265,000 for 5 people. The difference, 55,000, is her salary. Both queries covered at least 3 people, so the size rule never fired. <span class="pts">+' + a.pts + '</span></div>';
+    h += '</div>';
+    if (a.done) h += mcq('s7_b', 'What would best stop this tracker?', ['Raise the minimum group size to 4.', 'Add a small amount of random noise to every answer.', 'Hide the table name.', 'Require a longer password for the tool.'], 1, 'Noise makes the subtraction inexact. A minimum of 4 would still allow the 6-person and 5-person queries, so it would not help here. This idea is called differential privacy.', 20);
+    return shell(7, 'The HR statistics tool only answers when at least 3 people are covered. Your audit job is to show the weakness so it can be fixed.', h);
+  }
+
+  /* ---------- results ---------- */
+  function hash(s) { var h = 5381; for (var i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) >>> 0; return h; }
+  function view8() {
+    var tot = total(), name = S.name || 'Analyst';
+    var rank = tot >= 630 ? 'Security Lead' : tot >= 490 ? 'Senior Analyst' : tot >= 350 ? 'Analyst' : 'Trainee';
+    var ini = name.split(/\s+/).filter(Boolean).map(function (w) { return w[0]; }).join('').toUpperCase().slice(0, 3) || 'XX';
+    var code = 'CPE414-' + ini + '-' + tot + '-' + hash(name.toLowerCase() + '|' + tot).toString(36).toUpperCase().slice(-4);
+    var bars = STATIONS.map(function (st, i) { var sc = stationScore(i + 1); return '<div class="bar"><span>' + (i + 1) + '. ' + esc(st.short) + '</span><div class="track"><div class="fill" style="width:' + sc + '%"></div></div><span class="v">' + sc + ' / 100</span></div>'; }).join('');
+    var gaps = STATIONS.map(function (st, i) { return stationScore(i + 1) < 70 ? '<li><b>' + esc(st.name) + '</b>: ' + esc(st.review) + '</li>' : ''; }).join('');
+    return '<main class="stage wrap"><div class="kick">Shift complete</div><h1>' + esc(name) + ', your results</h1>' +
+      '<div class="card"><div class="row" style="gap:28px"><div><div class="big">' + tot + '<span class="muted" style="font-size:24px"> / 700</span></div></div><div><div class="small muted">Rank</div><div class="rank">' + rank + '</div></div></div></div>' +
+      '<div class="card"><h2>By station</h2><div class="bars">' + bars + '</div></div>' +
+      '<div class="card tint"><h2>Worth reviewing</h2>' + (gaps ? '<ul style="margin:0;padding-left:20px;display:grid;gap:4px">' + gaps + '</ul>' : '<p style="margin:0">No gaps. Every station scored 70 or more.</p>') + '</div>' +
+      '<div class="card"><h2>Completion code</h2><p class="small muted" style="margin-top:0">Show this to your instructor or paste it into the LMS.</p><div class="row"><div class="field"><label for="code">Code</label><input type="text" id="code" readonly value="' + esc(code) + '"></div><button class="btn primary" data-act="copy" style="align-self:end" id="copybtn">Copy code</button></div></div>' +
+      '<div class="nav"><button class="btn" data-act="go" data-n="7">Back to Station 7</button><span class="sp"></span>' + (S.ui.confirmReset ? '<button class="btn bad" data-act="reset">Yes, play again from zero</button><button class="btn" data-act="cancelreset">Cancel</button>' : '<button class="btn" data-act="askreset">Play again from zero</button>') + '</div></main>';
+  }
+
+  /* ---------- render and events ---------- */
+  function render() {
+    var fid = document.activeElement && document.activeElement.dataset ? document.activeElement.dataset.fid : null;
+    var body;
+    if (!S.name && S.step > 0) S.step = 0;
+    switch (S.step) { case 0: body = introView(); break; case 1: body = view1(); break; case 2: body = view2(); break; case 3: body = view3(); break; case 4: body = view4(); break; case 5: body = view5(); break; case 6: body = view6(); break; case 7: body = view7(); break; default: body = view8(); }
+    $('#app').innerHTML = header() + (S.step > 0 ? stepper() : '') + body;
+    if (fid) { var el = document.querySelector('[data-fid="' + fid + '"]'); if (el && !el.disabled) el.focus(); }
+  }
+  function go(n) { S.step = Math.max(0, Math.min(8, n)); S.ui.confirmReset = false; S.ui.s5msg = ''; save(); render(); window.scrollTo(0, 0); }
+  function setBind(path, v) { var p = path.split('.'); if (p.length === 1) { if (p[0] === 'name') S.name = v; else S.ui[p[0]] = v; } else { S.ui[p[0]] = S.ui[p[0]] || (p[0] === 'q' ? { agg: 'SUM', dept: 'All', ex: 'None' } : {}); S.ui[p[0]][p[1]] = v; } save(); }
+
+  document.addEventListener('input', function (e) { var b = e.target && e.target.dataset && e.target.dataset.bind; if (b && e.target.tagName === 'INPUT') setBind(b, e.target.value); });
+  document.addEventListener('change', function (e) { var b = e.target && e.target.dataset && e.target.dataset.bind; if (b && e.target.tagName === 'SELECT') setBind(b, e.target.value); });
+  document.addEventListener('click', function (e) {
+    var el = e.target.closest ? e.target.closest('[data-act]') : null; if (!el || el.tagName === 'INPUT') return;
+    var act = el.dataset.act, k = el.dataset.k;
+    if (act === 'go') return go(+el.dataset.n);
+    if (act === 'start') { var nm = (S.name || '').trim(); if (!nm) { S.ui.nameErr = true; render(); var ni = $('#name'); if (ni) ni.focus(); return; } S.name = nm; S.ui.nameErr = false; return go(S.step > 0 && S.step < 8 ? S.step : 1); }
+    if (act === 'askreset') { S.ui.confirmReset = true; render(); return; }
+    if (act === 'cancelreset') { S.ui.confirmReset = false; render(); return; }
+    if (act === 'reset') { var nm2 = S.name; S = { name: nm2, step: 0, t: {}, ui: {} }; save(); render(); window.scrollTo(0, 0); return; }
+    if (act === 'judge') { var items = judgeItems(k), it = items.filter(function (x) { return x.k === k; })[0], t = T(k); if (t.done) return; t.done = true; t.choice = el.dataset.c; t.pts = t.choice === it.ans ? it.value : 0; }
+    else if (act === 'mcq') { var t2 = T(k), i = +el.dataset.i, spec = mcqSpec(k); if (t2.done) return; if (i === spec.c) { t2.done = true; t2.pts = pointsFor(spec.v, t2.att, false); } else { t2.att++; t2.wrong.push(i); } }
+    else if (act === 's1tab') { S.ui.i1 = +el.dataset.i; S.ui.fb1 = null; }
+    else if (act === 's1hint') { T(P1[S.ui.i1 || 0].k).hint = true; }
+    else if (act === 's1check') {
+      var ix = S.ui.i1 || 0, p = P1[ix], tt = T(p.k), g = S.ui.grid[ix], o = gridOct(g), names = ['owner', 'group', 'world'], bad = [];
+      for (var c = 0; c < 3; c++) if (+o[c] !== +p.oct[c]) bad.push(names[c]);
+      if (!bad.length) { tt.done = true; tt.pts = pointsFor(p.v, tt.att, tt.hint); S.ui.fb1 = null; }
+      else { tt.att++; S.ui.fb1 = { k: p.k, msg: 'You set <code>' + gridStr(g) + '</code> (' + o + '). Check the ' + bad.join(' and ') + ' class' + (bad.length > 1 ? 'es' : '') + ' against the scenario.' }; }
+    }
+    else if (act === 'mode') { S.ui.mode = el.dataset.m; }
+    else if (act === 's5run') { runLogin(); }
+    else if (act === 's5hint') { T('s5_a').hint = true; }
+    else if (act === 's6hint') { T('s6_h').hint = true; }
+    else if (act === 's6check') {
+      S.ui.priv = S.ui.priv || {}; S.ui.privFb = {};
+      ACC.forEach(function (r) {
+        var t = T(r.k); if (t.done) return; var sel = S.ui.priv[r.k] || [];
+        var extra = sel.filter(function (x) { return r.ok.indexOf(x) < 0; }).length, miss = r.ok.filter(function (x) { return sel.indexOf(x) < 0; }).length;
+        if (!extra && !miss) { t.done = true; t.pts = pointsFor(25, t.att, T('s6_h').hint); }
+        else { t.att++; S.ui.privFb[r.k] = '<b>Not yet.</b> ' + extra + ' privilege' + (extra === 1 ? '' : 's') + ' too many, ' + miss + ' missing.'; }
+      });
+    }
+    else if (act === 's7run') { runQuery(); }
+    else if (act === 's7hint') { T('s7_a').hint = true; }
+    else if (act === 's7check') {
+      var v = String(S.ui.ans || '').replace(/[^0-9.]/g, ''), ta = T('s7_a');
+      if (v === '55000') { ta.done = true; ta.pts = pointsFor(80, ta.att, ta.hint); S.ui.fb7 = ''; }
+      else { ta.att++; S.ui.fb7 = v ? 'That is not Mia’s salary. Check your two query results and subtract again.' : 'Type a number first.'; }
+    }
+    else if (act === 'copy') { var inp = $('#code'), btn = $('#copybtn'); var done = function (m) { if (btn) btn.textContent = m; }; try { navigator.clipboard.writeText(inp.value).then(function () { done('Copied'); }, function () { inp.select(); done('Press Ctrl+C'); }); } catch (err) { inp.select(); done('Press Ctrl+C'); } return; }
+    else return;
+    save(); render();
+  });
+  document.addEventListener('change', function (e) {
+    var el = e.target; if (!el || el.tagName !== 'INPUT' || el.type !== 'checkbox') return;
+    if (el.dataset.act === 's1box') { var i = S.ui.i1 || 0; S.ui.grid = S.ui.grid || [[], [], []]; if (!S.ui.grid[i] || S.ui.grid[i].length !== 9) S.ui.grid[i] = [false, false, false, false, false, false, false, false, false]; S.ui.grid[i][+el.dataset.idx] = el.checked; S.ui.fb1 = null; save(); render(); }
+    else if (el.dataset.act === 'priv') { S.ui.priv = S.ui.priv || {}; var a = S.ui.priv[el.dataset.k] || []; a = a.filter(function (x) { return x !== el.dataset.p; }); if (el.checked) a.push(el.dataset.p); S.ui.priv[el.dataset.k] = a; S.ui.privFb = {}; save(); render(); }
+  });
+
+  /* lookup of judge items and mcq answers for scoring */
+  function judgeItems(k) {
+    var n = +k.charAt(1); var src = n === 2 ? view2Items() : n === 3 ? view3Items() : view4Items(); return src;
+  }
+  function view2Items() { return [{ k: 's2_1', value: V6[0], ans: 'a' }, { k: 's2_2', value: V6[1], ans: 'b' }, { k: 's2_3', value: V6[2], ans: 'b' }, { k: 's2_4', value: V6[3], ans: 'a' }, { k: 's2_5', value: V6[4], ans: 'a' }, { k: 's2_6', value: V6[5], ans: 'b' }]; }
+  function view3Items() { return [{ k: 's3_1', value: V6[0], ans: 'b' }, { k: 's3_2', value: V6[1], ans: 'a' }, { k: 's3_3', value: V6[2], ans: 'b' }, { k: 's3_4', value: V6[3], ans: 'a' }, { k: 's3_5', value: V6[4], ans: 'a' }, { k: 's3_6', value: V6[5], ans: 'b' }]; }
+  function view4Items() { return [{ k: 's4_1', value: V6[0], ans: 'a' }, { k: 's4_2', value: V6[1], ans: 'b' }, { k: 's4_3', value: V6[2], ans: 'b' }, { k: 's4_4', value: V6[3], ans: 'a' }, { k: 's4_5', value: V6[4], ans: 'b' }, { k: 's4_6', value: V6[5], ans: 'b' }]; }
+  function mcqSpec(k) { return { s5_b: { c: 1, v: 20 }, s5_d: { c: 1, v: 25 }, s7_b: { c: 1, v: 20 } }[k]; }
+
+  render();
+})();
+</script>
+
+</body>
+</html>
